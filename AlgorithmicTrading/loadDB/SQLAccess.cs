@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 
@@ -16,33 +17,33 @@ public class SQLAccess
 
     public async Task<List<StockData>> GetStockDataAsync(string ticker, string name, DateTime startDate, DateTime endDate)
     {
-        // 1. DB¿¡¼­ Á¾¸ñ ID °¡Á®¿À±â
+        // 1. DBï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ID ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         long stockId = await GetStockIdAsync(ticker);
 
-        // Á¾¸ñÀÌ DB¿¡ ¾ø´Â °æ¿ì, ¸ÕÀú Python ½ºÅ©¸³Æ®·Î Ãß°¡
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ DBï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ Python ï¿½ï¿½Å©ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ß°ï¿½
         if (stockId == -1)
         {
             Console.WriteLine($"Ticker {ticker} not found in the list. Fetching from source via Python script...");
             await RunPythonScriptAndPopulateDbAsync(ticker, name, startDate, endDate);
-            stockId = await GetStockIdAsync(ticker); // ID ´Ù½Ã Á¶È¸
+            stockId = await GetStockIdAsync(ticker); // ID ï¿½Ù½ï¿½ ï¿½ï¿½È¸
             if (stockId == -1)
             {
                 Console.WriteLine($"Failed to create ticker {ticker} in the database.");
-                return new List<StockData>(); // ½ÇÆÐ ½Ã ºó ¸®½ºÆ® ¹ÝÈ¯
+                return new List<StockData>(); // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½È¯
             }
         }
 
-        // 2. DB¿¡¼­ µ¥ÀÌÅÍ Á¶È¸
+        // 2. DBï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¸
         var data = await FetchDataFromDbAsync(stockId, startDate, endDate);
 
-        // 3. µ¥ÀÌÅÍ °ËÁõ (µ¥ÀÌÅÍ°¡ ¾ø´Â °æ¿ì)
+        // 3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½)
         if (data.Count == 0)
         {
             Console.WriteLine("No data found in DB for the given range. Fetching from source via Python script...");
-            // 4. Python ½ºÅ©¸³Æ® È£ÃâÇÏ¿© µ¥ÀÌÅÍ Ã¤¿ì±â
+            // 4. Python ï¿½ï¿½Å©ï¿½ï¿½Æ® È£ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¤ï¿½ï¿½ï¿½
             await RunPythonScriptAndPopulateDbAsync(ticker, name, startDate, endDate);
 
-            // 5. µ¥ÀÌÅÍ ´Ù½Ã Á¶È¸
+            // 5. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½È¸
             data = await FetchDataFromDbAsync(stockId, startDate, endDate);
         }
 
@@ -86,12 +87,12 @@ public class SQLAccess
                 {
                     data.Add(new StockData
                     {
-                        Date = reader.GetDateTime("date"),
-                        Open = reader.GetDecimal("open"),
-                        High = reader.GetDecimal("high"),
-                        Low = reader.GetDecimal("low"),
-                        Close = reader.GetDecimal("close"),
-                        Volume = reader.GetInt64("volume")
+                        Date = reader.GetDateTime(0),
+                        Open = reader.GetDecimal(1),
+                        High = reader.GetDecimal(2),
+                        Low = reader.GetDecimal(3),
+                        Close = reader.GetDecimal(4),
+                        Volume = reader.GetInt64(5)
                     });
                 }
             }
@@ -101,13 +102,21 @@ public class SQLAccess
 
     private async Task RunPythonScriptAndPopulateDbAsync(string ticker, string name, DateTime startDate, DateTime endDate)
     {
-        // 1. Python ½ÇÇà ÆÄÀÏ °æ·Î ¼öÁ¤ (Windows È¯°æ)
+        string pythonPath;
+        string scriptPath;
 
-        // 1. À§¿¡¼­ Ã£Àº ½ÇÁ¦ python.exe °æ·Î·Î ¼öÁ¤ÇÏ¼¼¿ä.
-        string pythonPath = @"C:\Users\minse\AppData\Local\Programs\Python\Python310\python.exe"; 
-
-        // 2. ¾Ë·ÁÁÖ½Å ½ºÅ©¸³Æ®ÀÇ Àý´ë °æ·Î·Î ¼öÁ¤
-        string scriptPath = @"C:\Users\minse\source\repos\AlgorithmicTrading\AlgorithmicTrading\loadDB\SQLAccess.py";
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // Windows í™˜ê²½ ê²½ë¡œ
+            pythonPath = @"C:\Users\minse\AppData\Local\Programs\Python\Python310\python.exe";
+            scriptPath = @"C:\Users\minse\AlgorithmTrading\Algorithm-Trading\AlgorithmicTrading\loadDB\SQLAccess.py";
+        }
+        else
+        {
+            // Linux (WSL) í™˜ê²½ ê²½ë¡œ
+            pythonPath = "/usr/bin/python3"; 
+            scriptPath = "/mnt/c/Users/minse/AlgorithmTrading/Algorithm-Trading/AlgorithmicTrading/loadDB/SQLAccess.py";
+        }
 
         var startInfo = new ProcessStartInfo
         {
