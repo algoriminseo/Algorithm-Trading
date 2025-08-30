@@ -114,7 +114,7 @@ public class SQLAccess
         else
         {
             // Linux (WSL) 환경 경로
-            pythonPath = "/usr/bin/python3"; 
+            pythonPath = "/mnt/c/Users/minse/AlgorithmTrading/Algorithm-Trading/AlgorithmicTrading/venv/bin/python"; 
             scriptPath = "/mnt/c/Users/minse/AlgorithmTrading/Algorithm-Trading/AlgorithmicTrading/loadDB/SQLAccess.py";
         }
 

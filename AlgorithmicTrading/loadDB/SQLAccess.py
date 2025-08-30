@@ -11,10 +11,10 @@ conn = pymysql.connect(
 )
 cur = conn.cursor()
 
-ticker = input("Enter the stock ticker symbol: ")
-name = input("Enter the stock name: ")
-startingDate = input("Enter the starting date in YYYY-MM-DD format: ")
-endingDate = input("Enter the ending date in YYYY-MM-DD format: ")
+ticker = input("")
+name = input("")
+startingDate = input("")
+endingDate = input("")
 
 is_intraday = startingDate == endingDate
 
